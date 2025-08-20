@@ -34,7 +34,7 @@ This project automates the extraction of LNG futures prices from Barchart.com an
 - Dynamic contract symbol generation
 - Forward FX rate integration for NBP pricing
 - Excel export with professional formatting
-- Email distribution system
+- Email distribution systems
 
 ## Requirements
 
