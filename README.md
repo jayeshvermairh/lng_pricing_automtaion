@@ -27,7 +27,7 @@ This project automates the extraction of LNG futures prices from Barchart.com an
    - Monthly time spreads
    - Quarterly strips
    - Seasonal contracts
-   - Calendar year averages
+   - Calendar year averages.
 
 ### Automation Features
 - Automatic data fetching from Barchart.com
