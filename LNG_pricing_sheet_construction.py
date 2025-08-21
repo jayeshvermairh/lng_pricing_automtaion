@@ -778,56 +778,70 @@ with pd.ExcelWriter(filename, engine="xlsxwriter") as writer:
 #print(f"Exported to: {filename}")
 
 def send_email_with_attachment(
-    filename,
-    subject,
-    body,
-    to_email,
-    from_email,
-    smtp_server,
-    smtp_port,
-    login,
-    password,
-    cc=None,
-    bcc=None
+    filename,          # Excel file path to attach
+    subject,           # Subject line for the email
+    body,              # Email message body (plain text)
+    to_email,          # List of TO recipients
+    from_email,        # Sender's email address
+    smtp_server,       # SMTP server address (e.g. smtp.gmail.com)
+    smtp_port,         # SMTP port (e.g. 465 for SSL)
+    login,             # Login/email used to authenticate with SMTP
+    password,          # Password or App password for SMTP auth
+    cc=None,           # Optional list of CC recipients
+    bcc=None,
+    use_starttls=True,       # Optional list of BCC recipients
+    debug=False
 ):
+    # Create base email object
+    msg = EmailMessage()                                # Create a blank email
+    msg['Subject'] = subject                            # Set subject line
+    msg['From'] = from_email                            # Set sender
+    msg['To'] = ', '.join(to_email)                     # Join TO list into a single string
 
-    # Create the email
-    msg = EmailMessage()
-    msg['Subject'] = subject
-    msg['From'] = from_email
-    msg['To'] = ', '.join(to_email)
-    
     if cc:
-        msg['Cc'] = ', '.join(cc)
-    
-    msg.set_content(body)
+        msg['Cc'] = ', '.join(cc)                       # Join CC list if provided
 
-    # Attach the Excel file
-    with open(filename, 'rb') as f:
-        file_data = f.read()
-        file_name = f.name
+    msg.set_content(body)                               # Add the email body (plain text)
 
-    msg.add_attachment(file_data, maintype='application', subtype='octet-stream', filename=file_name)
+    # Attach the Excel file to the email
+    with open(filename, 'rb') as f:                     # Open file in binary mode
+        msg.add_attachment(
+            f.read(),                                   # Read contents of the file
+            maintype='application',                     # MIME type: application/octet-stream (generic binary)
+            subtype='octet-stream',
+            filename=os.path.basename(filename)         # Use only the filename in attachment
+        )
 
-    # Combine all recipients
-    all_recipients = to_email + (cc if cc else []) + (bcc if bcc else [])
+    # Combine all recipients (To + Cc + Bcc)
+    all_recipients = to_email + (cc or []) + (bcc or [])  # Ensure all recipients get the message
 
-    # Send the email
-    with smtplib.SMTP_SSL(smtp_server, smtp_port) as smtp:
-        smtp.login(login, password)
-        smtp.send_message(msg, to_addrs=all_recipients)
+    # Send the message via secure SMTP
+    with smtplib.SMTP(smtp_server, smtp_port, timeout=60) as smtp:  # Establish secure SMTP session
+        if debug:
+            smtp.set_debuglevel(1)
+        smtp.ehlo()
+        if use_starttls:
+            smtp.starttls()                             # Upgrade to secure connection (TLS)
+            smtp.ehlo()  
 
-# Email config
+        smtp.login(login, password)                         # Log in to SMTP server
+        smtp.send_message(msg, to_addrs=all_recipients)     # Send the fully formed message
+
+# Email delivery configuration — ready to call at the end of your script
 send_email_with_attachment(
-    filename=filename,
-    subject=f"LNG Pricing Sheet - {today_str}",
-    body="Hi Miguel, \n\nPlease find attached the latest LNG pricing sheet.",
-    to_email=["Miguel.Arroyo@irh.ae"],  # Primary recipients
-    cc=["energy@irh.ae", "vedant.bundellu@irh.ae", "Zinat.Juma@irh.ae"],    # Optional CC list
-    #bcc=["hidden1@irh.ae", "hidden2@irh.ae"],                              # Commented out for now
-    from_email="vedantxyz1@gmail.com",
-    smtp_server="smtp.gmail.com",
-    smtp_port=465,
-    login="vedantxyz1@gmail.com",
-    password=os.environ["EMAIL_PASSWORD"]
+    filename=filename,                                      # Path to Excel file generated earlier
+    subject=f"Testing LNG Pricing Sheet – {today_str}",    # Dynamic subject line with today's date
+    body="Hi Jayesh,\n\nPlease find attached the latest LNG pricing sheet.",  # Plain-text body
+    to_email=["jayesh.verma@irh.ae"],                        # Primary recipient
+    cc=["Mohammad.Sheik@irh.ae", "Praveen.Yadav@irh.ae"],    # Optional CC list
+
+    #bcc=["hidden1@irh.ae", "hidden2@irh.ae"],  # Commented out for now (uncomment to add more people in the email)
+
+    # Change the sending email address to IRH Domain by the end of the week
+    from_email="alert@irh.ae",                   # Sender address
+    smtp_server="smtp.office365.com",                           # Gmail SMTP
+    smtp_port=587,                                          # SSL port for Gmail
+    login="alert@irh.ae",                        # Same as sender
+    password=os.environ.get("EMAIL_PASSWORD"),              # Pull password securely from environment variable
+    use_starttls=True
 )
